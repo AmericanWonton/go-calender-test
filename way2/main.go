@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"time"
@@ -15,6 +17,43 @@ import (
 	"google.golang.org/api/calendar/v3"
 	"google.golang.org/api/option"
 )
+
+/* TEMPLATE DEFINITION */
+var template1 *template.Template
+
+func init() {
+	template1 = template.Must(template.ParseGlob("./static/templates/*"))
+}
+
+//Handles the Index requests; Ask User if they're legal here
+func index(w http.ResponseWriter, r *http.Request) {
+	/* Execute template, handle error */
+	err1 := template1.ExecuteTemplate(w, "index.gohtml", nil)
+	HandleError(w, err1)
+}
+
+// Handle Errors passing templates
+func HandleError(w http.ResponseWriter, err error) {
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Fatalln(err)
+	}
+}
+
+//Handles all requests coming in
+func handleRequests() {
+	myRouter := mux.NewRouter().StrictSlash(true)
+
+	http.Handle("/favicon.ico", http.NotFoundHandler()) //For missing FavIcon
+	//Serve our pages
+	myRouter.HandleFunc("/", index)
+	//Serve Google Calendar stuff
+
+	//Serve our static files
+	myRouter.Handle("/", http.FileServer(http.Dir("./static")))
+	myRouter.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+	log.Fatal(http.ListenAndServe(":5000", myRouter))
+}
 
 // Retrieve a token, saves the token, then returns the generated client.
 func getClient(config *oauth2.Config) *http.Client {
@@ -72,6 +111,13 @@ func saveToken(path string, token *oauth2.Token) {
 }
 
 func main() {
+	rand.Seed(time.Now().UTC().UnixNano()) //Randomly Seed
+
+	handleRequests() // handle requests
+}
+
+/* This does all the fun Google Calender reading */
+func googleCalendarReadTest() {
 	ctx := context.Background()
 	b, err := ioutil.ReadFile("credentials.json")
 	if err != nil {
