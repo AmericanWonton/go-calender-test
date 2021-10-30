@@ -12,6 +12,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/gorilla/mux"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/calendar/v3"
@@ -44,6 +45,7 @@ func HandleError(w http.ResponseWriter, err error) {
 func handleRequests() {
 	myRouter := mux.NewRouter().StrictSlash(true)
 
+	fmt.Printf("DEBUG: We are serving files on internet\n")
 	http.Handle("/favicon.ico", http.NotFoundHandler()) //For missing FavIcon
 	//Serve our pages
 	myRouter.HandleFunc("/", index)
