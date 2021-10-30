@@ -22,14 +22,34 @@ import (
 /* TEMPLATE DEFINITION */
 var template1 *template.Template
 
+/* Google Client/Calendar information */
+type CalendarPassing struct {
+	CalendarAPIKey     string `json:"CalendarAPIKey"`
+	CalendarID         string `json:"CalendarID"`
+	GoogleClientID     string `json:"GoogleClientID"`
+	GoogleClientSecret string `json:"GoogleClientSecret"`
+}
+
+var calendarPassing CalendarPassing
+
+/* Webpage information passing */
+type ViewData struct {
+	PassedCalendarInfo CalendarPassing `json:"PassedCalendarInfo"`
+}
+
 func init() {
-	template1 = template.Must(template.ParseGlob("./static/templates/*"))
+	template1 = template.Must(template.ParseGlob("./static/templates/*")) //pass templates
+	getCalendarCreds()                                                    //Get calendar creds
 }
 
 //Handles the Index requests; Ask User if they're legal here
 func index(w http.ResponseWriter, r *http.Request) {
+	//Build info to pass
+	vd := ViewData{
+		PassedCalendarInfo: calendarPassing,
+	}
 	/* Execute template, handle error */
-	err1 := template1.ExecuteTemplate(w, "index.gohtml", nil)
+	err1 := template1.ExecuteTemplate(w, "index.gohtml", vd)
 	HandleError(w, err1)
 }
 
@@ -116,6 +136,38 @@ func main() {
 	rand.Seed(time.Now().UTC().UnixNano()) //Randomly Seed
 
 	handleRequests() // handle requests
+}
+
+/* This gets our enviornment varialbles to create our google calendar information */
+func getCalendarCreds() {
+	_, ok := os.LookupEnv("GDESS_GOOGLE_CLIENT_ID")
+	if !ok {
+		message := "This ENV Variable is not present: " + "GDESS_GOOGLE_CLIENT_ID"
+		panic(message)
+	}
+
+	_, ok2 := os.LookupEnv("GDESS_GOOGLE_CLIENT_SECRET")
+	if !ok2 {
+		message := "This ENV Variable is not present: " + "GDESS_GOOGLE_CLIENT_SECRET"
+		panic(message)
+	}
+
+	_, ok3 := os.LookupEnv("GDESS_GOOGLE_CALENDAR_APIKEY")
+	if !ok3 {
+		message := "This ENV Variable is not present: " + "GDESS_GOOGLE_CALENDAR_APIKEY"
+		panic(message)
+	}
+
+	_, ok4 := os.LookupEnv("GDESS_CALENDAR_ID")
+	if !ok4 {
+		message := "This ENV Variable is not present: " + "GDESS_CALENDAR_ID"
+		panic(message)
+	}
+
+	calendarPassing.GoogleClientID = os.Getenv("GDESS_GOOGLE_CLIENT_ID")
+	calendarPassing.GoogleClientSecret = os.Getenv("GDESS_GOOGLE_CLIENT_SECRET")
+	calendarPassing.CalendarAPIKey = os.Getenv("GDESS_GOOGLE_CALENDAR_APIKEY")
+	calendarPassing.CalendarID = os.Getenv("GDESS_CALENDAR_ID")
 }
 
 /* This does all the fun Google Calender reading */

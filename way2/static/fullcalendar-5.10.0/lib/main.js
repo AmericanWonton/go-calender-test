@@ -5,7 +5,7 @@ Docs & License: https://fullcalendar.io/
 */
 
 document.addEventListener('DOMContentLoaded', function(){
-    console.log("We can recognize main");
+    console.log("DEBUG: We can recognize main");
 });
 var FullCalendar = (function (exports) {
     'use strict';

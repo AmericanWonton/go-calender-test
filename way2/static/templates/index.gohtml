@@ -19,22 +19,14 @@
         <script src="static/js/fullcalendar.js"></script>
         {{/* Here is our Javascript or additional code needed */}}
         <script>
-            /* Manage Full Calendar */
-            document.addEventListener('DOMContentLoaded', function() {
-                var calendarEl = document.getElementById('calendar');
-                var calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: 'dayGridMonth'
-                });
-                calendar.render();
-                console.log("Initialize Calender");
-            });
+            calendarVariableSet({{.PassedCalendarInfo.GoogleClientID}}, {{.PassedCalendarInfo.GoogleClientSecret}},
+            {{.PassedCalendarInfo.CalendarAPIKey}}, {{.PassedCalendarInfo.CalendarID}});
         </script>
     </head>
     <body>
         {{/* Here is our header */}}
         
         <p>Google Login</p>
-        
 
         <div id='calendar'></div>
         

@@ -7,3 +7,9 @@ FullCalender.io
 https://fullcalendar.io/docs/initialize-globals
 https://fullcalendar.io/docs/plugin-index
 https://fullcalendar.io/docs/google-calendar
+
+
+Plans:
+So theoretically, we can ignore the Ical/Google Calender links for fullCalendar. 
+Just load all the calendar information on the backend, format it, then
+pass that to the front-end for FullCalendar to populate
