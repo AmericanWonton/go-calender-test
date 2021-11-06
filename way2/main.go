@@ -23,11 +23,13 @@ import (
 var template1 *template.Template
 
 /* Google Client/Calendar information */
+
 type CalendarPassing struct {
 	CalendarAPIKey     string `json:"CalendarAPIKey"`
 	CalendarID         string `json:"CalendarID"`
 	GoogleClientID     string `json:"GoogleClientID"`
 	GoogleClientSecret string `json:"GoogleClientSecret"`
+	CurrentTime        string `json:"CurrentTime"`
 }
 
 var calendarPassing CalendarPassing
@@ -45,6 +47,8 @@ func init() {
 //Handles the Index requests; Ask User if they're legal here
 func index(w http.ResponseWriter, r *http.Request) {
 	//Build info to pass
+	currentTime := time.Now()
+	calendarPassing.CurrentTime = currentTime.Format("2006-01-02")
 	vd := ViewData{
 		PassedCalendarInfo: calendarPassing,
 	}
@@ -135,6 +139,8 @@ func saveToken(path string, token *oauth2.Token) {
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano()) //Randomly Seed
 
+	googleCalendarCreateEventTest()
+	//googleCalendarReadTest()
 	handleRequests() // handle requests
 }
 
@@ -172,6 +178,9 @@ func getCalendarCreds() {
 
 /* This does all the fun Google Calender reading */
 func googleCalendarReadTest() {
+	currentTime := time.Now() //Used for debugging
+	fmt.Println("Here is the current Google time in YYYY-MM-DD : ", currentTime.Format("2006-01-02"))
+
 	ctx := context.Background()
 	b, err := ioutil.ReadFile("credentials.json")
 	if err != nil {
@@ -208,6 +217,61 @@ func googleCalendarReadTest() {
 				date = item.Start.Date
 			}
 			fmt.Printf("%v (%v)\n", item.Summary, date)
+			fmt.Printf("Here's a description: %v\n", item.Description)
 		}
 	}
+
+}
+
+/* This creates a test Google Calendar Event */
+func googleCalendarCreateEventTest() {
+
+	ctx := context.Background()
+	b, err := ioutil.ReadFile("credentials.json")
+	if err != nil {
+		log.Fatalf("Unable to read client secret file: %v", err)
+	}
+
+	// If modifying these scopes, delete your previously saved token.json.
+	config, err := google.ConfigFromJSON(b, calendar.CalendarReadonlyScope)
+	if err != nil {
+		fmt.Printf("Unable to parse client secret file to config: %v", err)
+		log.Fatalf("Unable to parse client secret file to config: %v", err)
+	}
+	client := getClient(config)
+
+	srv, err := calendar.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		fmt.Printf("Unable to retrieve Calendar client: %v", err)
+		log.Fatalf("Unable to retrieve Calendar client: %v", err)
+	}
+
+	event := &calendar.Event{
+		Summary:     "Test Calendar Creation",
+		Location:    "800 Howard St., San Francisco, CA 94103",
+		Description: "A test Google Calendar date, created from Golang",
+		Start: &calendar.EventDateTime{
+			DateTime: "2021-11-06T09:00:00-07:00",
+			TimeZone: "America/Saint_Louis",
+		},
+		End: &calendar.EventDateTime{
+			DateTime: "2021-11-06T17:00:00-07:00",
+			TimeZone: "America/Saint_Louis",
+		},
+		//Recurrence: []string{"RRULE:FREQ=DAILY;COUNT=2"},
+		/*
+			Attendees: []*calendar.EventAttendee{
+				&calendar.EventAttendee{Email: "lpage@example.com"},
+				&calendar.EventAttendee{Email: "sbrin@example.com"},
+			},
+		*/
+	}
+
+	calendarId := "primary"
+	event, err2 := srv.Events.Insert(calendarId, event).Do()
+	if err2 != nil {
+		fmt.Printf("Unable to create event: %v\n", err2)
+		log.Fatalf("Unable to create event. %v\n", err2)
+	}
+	fmt.Printf("Event created: %s\n", event.HtmlLink)
 }
