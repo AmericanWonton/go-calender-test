@@ -250,7 +250,18 @@ func googleCalendarInsertTestTheSecond() {
 		tok = getTokenFromWeb(config)
 		saveToken(tokFile, tok)
 	}
+	/*
+		token := oauth2.Token{
+			AccessToken:  "ya29.a0ARrdaM_vWvmg9vU8bujpanzVEiQ3GXWBhP5CyA7sHDsAzCTqcsAbpktrMObQZ1W6-QxmCoj5ZK00zfeiT0Bpmf8pN45UWrTqpUDPBCGqG4cjHUDXDjiwmwS4wBnWUYMr2YAbEfFHbDEgRJCJR5-1UvL_wq_y",
+			RefreshToken: "1//04pFlAHNvTESECgYIARAAGAQSNwF-L9Ir2v2T0JPHk_H1fxAWJA7JH7eGbbGCHJ0R5WqJNaV3WR9MAbriryVPuDRW86sGsay-5G4",
+			TokenType:    "Bearer",
+			Expiry:       time.Now(),
+		}
 
+		var tokenSource = config.TokenSource(context.Background(), &token)
+	*/
+
+	//calendarService, err := calendar.NewService(ctx, option.WithTokenSource(tokenSource))
 	calendarService, err := calendar.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, tok)))
 
 	if err != nil {
@@ -260,12 +271,12 @@ func googleCalendarInsertTestTheSecond() {
 
 	theEvent := &calendar.Event{
 		Start: &calendar.EventDateTime{
-			DateTime: "2021-11-021T09:00:00-07:00",
-			TimeZone: "America/Los_Angeles",
+			DateTime: "2021-11-12T17:06:02.000Z",
+			TimeZone: "America/Chicago",
 		},
 		End: &calendar.EventDateTime{
-			DateTime: "2021-11-21T17:00:00-07:00",
-			TimeZone: "America/Saint_Louis",
+			DateTime: "2021-11-12T19:06:02.000Z",
+			TimeZone: "America/Chicago",
 		},
 		Summary:     "Test Calendar Creation",
 		Location:    "800 Howard St., San Francisco, CA 94103",
