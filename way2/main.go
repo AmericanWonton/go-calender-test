@@ -139,7 +139,8 @@ func saveToken(path string, token *oauth2.Token) {
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano()) //Randomly Seed
 
-	googleCalendarCreateEventTest()
+	googleCalendarInsertTestTheSecond()
+	//googleCalendarCreateEventTest()
 	//googleCalendarReadTest()
 	handleRequests() // handle requests
 }
@@ -223,17 +224,74 @@ func googleCalendarReadTest() {
 
 }
 
-/* This creates a test Google Calendar Event */
-func googleCalendarCreateEventTest() {
+/* This is another test function for Inserting a Google Calendar Event*/
 
+func googleCalendarInsertTestTheSecond() {
 	ctx := context.Background()
-	b, err := ioutil.ReadFile("credentials.json")
+
+	b, err := ioutil.ReadFile("credentials-insert.json")
 	if err != nil {
 		log.Fatalf("Unable to read client secret file: %v", err)
 	}
 
 	// If modifying these scopes, delete your previously saved token.json.
-	config, err := google.ConfigFromJSON(b, calendar.CalendarReadonlyScope)
+	config, err := google.ConfigFromJSON(b, calendar.CalendarEventsScope)
+	if err != nil {
+		fmt.Printf("Unable to parse client secret file to config: %v", err)
+		log.Fatalf("Unable to parse client secret file to config: %v", err)
+	}
+
+	tokFile := "insertToken.json"
+	tok, err := tokenFromFile(tokFile)
+	if err != nil {
+		tok = getTokenFromWeb(config)
+		saveToken(tokFile, tok)
+	}
+
+	calendarService, err := calendar.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, tok)))
+
+	if err != nil {
+		fmt.Printf("Client Setup failed: %v", err)
+		log.Fatalf("Client Setup failed: %v", err)
+	}
+
+	theEvent := &calendar.Event{
+		Start: &calendar.EventDateTime{
+			DateTime: "2021-11-021T09:00:00-07:00",
+			TimeZone: "America/Los_Angeles",
+		},
+		End: &calendar.EventDateTime{
+			DateTime: "2021-11-21T17:00:00-07:00",
+			TimeZone: "America/Saint_Louis",
+		},
+		Summary:     "Test Calendar Creation",
+		Location:    "800 Howard St., San Francisco, CA 94103",
+		Description: "A test Google Calendar date, created from Golang",
+	}
+
+	calendarId := "primary"
+	event, err2 := calendarService.Events.Insert(calendarId, theEvent).Do()
+	if err2 != nil {
+		fmt.Printf("Unable to create event: %v\n", err2.Error)
+		//fmt.Printf("Here is the header: %v\n", event.Header)
+		//fmt.Printf("Here is the HTTPStatusCode: %v\n", event.HTTPStatusCode)
+		fmt.Printf("Here is the MarshalJSON: %v\n", event.MarshalJSON)
+		log.Fatalf("Unable to create event. %v\n", err2)
+	}
+	fmt.Printf("Event created: %s\n", event.HtmlLink)
+}
+
+/* This creates a test Google Calendar Event */
+func googleCalendarCreateEventTest() {
+
+	ctx := context.Background()
+	b, err := ioutil.ReadFile("credentials-insert.json")
+	if err != nil {
+		log.Fatalf("Unable to read client secret file: %v", err)
+	}
+
+	// If modifying these scopes, delete your previously saved token.json.
+	config, err := google.ConfigFromJSON(b, calendar.CalendarScope)
 	if err != nil {
 		fmt.Printf("Unable to parse client secret file to config: %v", err)
 		log.Fatalf("Unable to parse client secret file to config: %v", err)
@@ -246,29 +304,22 @@ func googleCalendarCreateEventTest() {
 		log.Fatalf("Unable to retrieve Calendar client: %v", err)
 	}
 
-	event := &calendar.Event{
+	theEvent := &calendar.Event{
+		Start: &calendar.EventDateTime{
+			DateTime: "2021-11-021T09:00:00-07:00",
+			TimeZone: "America/Los_Angeles",
+		},
+		End: &calendar.EventDateTime{
+			DateTime: "2021-11-21T17:00:00-07:00",
+			TimeZone: "America/Saint_Louis",
+		},
 		Summary:     "Test Calendar Creation",
 		Location:    "800 Howard St., San Francisco, CA 94103",
 		Description: "A test Google Calendar date, created from Golang",
-		Start: &calendar.EventDateTime{
-			DateTime: "2021-11-06T09:00:00-07:00",
-			TimeZone: "America/Saint_Louis",
-		},
-		End: &calendar.EventDateTime{
-			DateTime: "2021-11-06T17:00:00-07:00",
-			TimeZone: "America/Saint_Louis",
-		},
-		//Recurrence: []string{"RRULE:FREQ=DAILY;COUNT=2"},
-		/*
-			Attendees: []*calendar.EventAttendee{
-				&calendar.EventAttendee{Email: "lpage@example.com"},
-				&calendar.EventAttendee{Email: "sbrin@example.com"},
-			},
-		*/
 	}
 
 	calendarId := "primary"
-	event, err2 := srv.Events.Insert(calendarId, event).Do()
+	event, err2 := srv.Events.Insert(calendarId, theEvent).Do()
 	if err2 != nil {
 		fmt.Printf("Unable to create event: %v\n", err2)
 		log.Fatalf("Unable to create event. %v\n", err2)

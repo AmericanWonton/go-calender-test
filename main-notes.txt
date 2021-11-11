@@ -3,6 +3,12 @@ Possibly good links: https://www.youtube.com/watch?v=E0mrZwl1Kow
 Here's Google's Go Example: https://developers.google.com/calendar/api/quickstart/go
 Just a note, you can get the credentials for the JSON file here: https://help.talend.com/r/E3i03eb7IpvsigwC58fxQg/EjqPCVhQjCFPP6pU5Bzvdw
 
+This OAuth screen might help with issues:
+https://medium.com/wesionary-team/sending-emails-with-go-golang-using-smtp-gmail-and-oauth2-185ee12ab306
+
+Notes on Calendar API with Google:
+https://stackoverflow.com/questions/39767817/credential-to-connect-the-google-calendar-api-in-go
+
 FullCalender.io
 https://fullcalendar.io/docs/initialize-globals
 https://fullcalendar.io/docs/plugin-index

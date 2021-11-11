@@ -1,3 +1,5 @@
 #Ignore credentials
 way2/credentials.json
 way2/token.json
+way2/credentials-insert.json
+way2/insertToken.json
