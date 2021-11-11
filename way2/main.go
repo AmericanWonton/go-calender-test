@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -128,7 +129,7 @@ func tokenFromFile(file string) (*oauth2.Token, error) {
 // Saves a token to a file path.
 func saveToken(path string, token *oauth2.Token) {
 	fmt.Printf("Saving credential file to: %s\n", path)
-	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 	if err != nil {
 		log.Fatalf("Unable to cache oauth token: %v", err)
 	}
@@ -229,7 +230,9 @@ func googleCalendarReadTest() {
 func googleCalendarInsertTestTheSecond() {
 	ctx := context.Background()
 
-	b, err := ioutil.ReadFile("credentials-insert.json")
+	wd, _ := os.Getwd()
+	credDir := filepath.Join(wd, "creds", "credentials-insert.json")
+	b, err := ioutil.ReadFile(credDir)
 	if err != nil {
 		log.Fatalf("Unable to read client secret file: %v", err)
 	}
@@ -241,7 +244,7 @@ func googleCalendarInsertTestTheSecond() {
 		log.Fatalf("Unable to parse client secret file to config: %v", err)
 	}
 
-	tokFile := "insertToken.json"
+	tokFile := filepath.Join(wd, "creds", "insertToken.json")
 	tok, err := tokenFromFile(tokFile)
 	if err != nil {
 		tok = getTokenFromWeb(config)
