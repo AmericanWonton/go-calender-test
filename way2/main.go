@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -17,6 +18,7 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/calendar/v3"
+	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
 )
 
@@ -140,9 +142,17 @@ func saveToken(path string, token *oauth2.Token) {
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano()) //Randomly Seed
 
-	googleCalendarInsertTestTheSecond()
+	//googleCalendarInsertTestTheSecond()
 	//googleCalendarCreateEventTest()
 	//googleCalendarReadTest()
+	//insertMeetingAttachment()
+	/*
+		getService, err := getService()
+		if err != nil {
+			panic(fmt.Sprintf("Could not get service: %v\n", err.Error()))
+		}
+	*/
+	//googleDriveList(getService)
 	handleRequests() // handle requests
 }
 
@@ -226,7 +236,6 @@ func googleCalendarReadTest() {
 }
 
 /* This is another test function for Inserting a Google Calendar Event*/
-
 func googleCalendarInsertTestTheSecond() {
 	ctx := context.Background()
 
@@ -295,6 +304,43 @@ func googleCalendarInsertTestTheSecond() {
 	fmt.Printf("Event created: %s\n", event.HtmlLink)
 }
 
+/* This is a test fnction for inserting a Google Drive Attachment to a meeting */
+func insertMeetingAttachment() {
+	wd, _ := os.Getwd()
+
+	/* Step 1 open file for working with */
+	fileDir := filepath.Join(wd, "testFileUploads", "testfile.txt")
+	f, err := os.Open(fileDir)
+
+	if err != nil {
+		panic(fmt.Sprintf("cannot open file: %v", err))
+	}
+
+	defer f.Close()
+
+	/* Step 2 get Google Service */
+	service, err := getService()
+
+	if err != nil {
+		panic(fmt.Sprintf("Uh oh, couldn't create service: %v\n", err.Error()))
+	}
+
+	// Step 3. Create the directory
+	dir, err2 := createDir(service, "testGoogleDriveFolder", "root")
+	if err2 != nil {
+		panic(fmt.Sprintf("Uh oh, couldn't create directory: %v\n", err2.Error()))
+	}
+
+	// Step 4. Create the file and upload its content
+	file, err := createFile(service, "testfile.txt", "text/plain", f, dir.Id)
+
+	if err != nil {
+		panic(fmt.Sprintf("Could not create file: %v\n", err))
+	}
+
+	fmt.Printf("File '%s' successfully uploaded in '%s' directory\n", file.Name, dir.Name)
+}
+
 /* This creates a test Google Calendar Event */
 func googleCalendarCreateEventTest() {
 
@@ -339,4 +385,93 @@ func googleCalendarCreateEventTest() {
 		log.Fatalf("Unable to create event. %v\n", err2)
 	}
 	fmt.Printf("Event created: %s\n", event.HtmlLink)
+}
+
+/* This reads all files in a certain Google Drive Directory */
+func googleDriveList(service *drive.Service) {
+
+	r, err := service.Files.List().PageSize(10).
+		Fields("nextPageToken, files(id, name)").Do()
+	if err != nil {
+		log.Fatalf("Unable to retrieve files: %v", err)
+	}
+	fmt.Println("Files:")
+	if len(r.Files) == 0 {
+		fmt.Println("No files found.")
+	} else {
+		for _, i := range r.Files {
+			fmt.Printf("%s (%s)\n", i.Name, i.Id)
+		}
+	}
+}
+
+/* Get Google Drive Service */
+func getService() (*drive.Service, error) {
+	wd, _ := os.Getwd()
+	credDir := filepath.Join(wd, "creds", "google-drive-credentials.json")
+
+	b, err := ioutil.ReadFile(credDir)
+	if err != nil {
+		fmt.Printf("Unable to read credentials.json file. Err: %v\n", err)
+		return nil, err
+	}
+
+	// If modifying these scopes, delete your previously saved token.json.
+	config, err := google.ConfigFromJSON(b, drive.DriveFileScope)
+
+	if err != nil {
+		return nil, err
+	}
+
+	ctx := context.Background()
+	tokFile := filepath.Join(wd, "creds", "googleDriveToken.json")
+	tok, err := tokenFromFile(tokFile)
+	if err != nil {
+		tok = getTokenFromWeb(config)
+		saveToken(tokFile, tok)
+	}
+
+	service, err := drive.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, tok)))
+
+	if err != nil {
+		fmt.Printf("Cannot create the Google Drive service: %v\n", err)
+		return nil, err
+	}
+
+	return service, err
+}
+
+/* Create Google Drive Directory */
+func createDir(service *drive.Service, name string, parentId string) (*drive.File, error) {
+	d := &drive.File{
+		Name:     name,
+		MimeType: "application/vnd.google-apps.folder",
+		Parents:  []string{parentId},
+	}
+
+	file, err := service.Files.Create(d).Do()
+
+	if err != nil {
+		log.Println("Could not create dir: " + err.Error())
+		return nil, err
+	}
+
+	return file, nil
+}
+
+/* Create Google Drive file in a specific directory */
+func createFile(service *drive.Service, name string, mimeType string, content io.Reader, parentId string) (*drive.File, error) {
+	f := &drive.File{
+		MimeType: mimeType,
+		Name:     name,
+		Parents:  []string{parentId},
+	}
+	file, err := service.Files.Create(f).Media(content).Do()
+
+	if err != nil {
+		log.Println("Could not create file: " + err.Error())
+		return nil, err
+	}
+
+	return file, nil
 }
