@@ -14,6 +14,9 @@ TIME ZONES ALLOWED: https://stackoverflow.com/questions/22526635/list-of-accepta
 Need to upload files to Google Drive first...
 https://developers.google.com/drive/api/v3/quickstart/go
 https://devtud.medium.com/upload-files-in-google-drive-with-golang-and-google-drive-api-d686fb62f884
+Notes on uploading files to Google Drive with API:
+Folders above the one you create need to have the same sharing directory as other files!
+If you add an attachment to the Google Calendar event, you must add, 'Supports attachments' as true!
 
 FullCalender.io
 https://fullcalendar.io/docs/initialize-globals

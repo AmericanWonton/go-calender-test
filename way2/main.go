@@ -146,15 +146,17 @@ func main() {
 	//googleCalendarCreateEventTest()
 	//googleCalendarReadTest()
 	//insertMeetingAttachment()
+
 	/*
 		getService, err := getService()
 		if err != nil {
 			panic(fmt.Sprintf("Could not get service: %v\n", err.Error()))
 		}
-	*/
-	//googleDriveList(getService)
 
-	handleRequests() // handle requests
+		googleDriveList(getService)
+	*/
+
+	//handleRequests() // handle requests
 }
 
 /* This gets our enviornment varialbles to create our google calendar information */
@@ -268,17 +270,16 @@ func googleCalendarInsertTestTheSecond() {
 		log.Fatalf("Client Setup failed: %v", err)
 	}
 
+	/* */
 	/* Attachments */
 	var theAttachment1 = &calendar.EventAttachment{}
-	(*theAttachment1).FileUrl = "https://drive.google.com/file/d/1WZOrNUzQHPDbWWRnNQ-ni8OQbY9GS3Hx/view?usp=sharing"
+	(*theAttachment1).FileUrl = "https://drive.google.com/file/d/1m1Q3wEvmgmgly5IBVHVAqe4kMTpc82qG/view?usp=sharing"
+	(*theAttachment1).FileId = "1m1Q3wEvmgmgly5IBVHVAqe4kMTpc82qG"
 	(*theAttachment1).Title = "testfile.txt"
 	(*theAttachment1).MimeType = "text/plain"
 
 	var theAttachments []*calendar.EventAttachment
 	theAttachments = append(theAttachments, theAttachment1)
-
-	fmt.Printf("DEBUG: Here is our attachment1: %v\n", theAttachment1)
-	fmt.Printf("DEBUG: Here is our attachments: %v\n", theAttachments)
 
 	/* Event Attendees */
 	var theAttendee = &calendar.EventAttendee{
@@ -293,11 +294,11 @@ func googleCalendarInsertTestTheSecond() {
 
 	theEvent := &calendar.Event{
 		Start: &calendar.EventDateTime{
-			DateTime: "2021-11-20T17:06:02.000Z",
+			DateTime: "2021-11-24T17:06:02.000Z",
 			TimeZone: "America/Chicago",
 		},
 		End: &calendar.EventDateTime{
-			DateTime: "2021-11-20T19:06:02.000Z",
+			DateTime: "2021-11-24T19:06:02.000Z",
 			TimeZone: "America/Chicago",
 		},
 		Summary:     "Test Calendar Creation",
@@ -308,7 +309,7 @@ func googleCalendarInsertTestTheSecond() {
 	}
 
 	calendarId := "primary"
-	event, err2 := calendarService.Events.Insert(calendarId, theEvent).Do()
+	event, err2 := calendarService.Events.Insert(calendarId, theEvent).SupportsAttachments(true).Do()
 	if err2 != nil {
 		fmt.Printf("Unable to create event: %v\n", err2.Error)
 		//fmt.Printf("Here is the header: %v\n", event.Header)
@@ -354,6 +355,26 @@ func insertMeetingAttachment() {
 	}
 
 	fmt.Printf("File '%s' successfully uploaded in '%s' directory\n", file.Name, dir.Name)
+
+	time.Sleep(2 * time.Second) //DEBUG WAIT
+	//Debug create second service
+	service2, err := getService()
+
+	if err != nil {
+		panic(fmt.Sprintf("Uh oh, couldn't create service: %v\n", err.Error()))
+	}
+
+	//Step 5 edit the permissions for this file so others can download/use it
+	createPermissionsGoogleAPI(service2, file.Id, "anyone", "reader")
+
+	//Get Google Drive File Info
+	anErr, theFile := getDriveFileInfo(service, file.Id)
+	if anErr != nil {
+		panic(fmt.Sprintf("There was an error getting fileinfo: %v\n", anErr.Error()))
+	}
+
+	fmt.Printf("Here is the webContentLink: %v\n", theFile.WebContentLink)
+	fmt.Printf("Here is the WebViewLink: %v\n", theFile.WebViewLink)
 }
 
 /* This creates a test Google Calendar Event */
@@ -405,7 +426,7 @@ func googleCalendarCreateEventTest() {
 /* This reads all files in a certain Google Drive Directory */
 func googleDriveList(service *drive.Service) {
 
-	r, err := service.Files.List().PageSize(10).
+	r, err := service.Files.List().PageSize(400).
 		Fields("nextPageToken, files(id, name)").Do()
 	if err != nil {
 		log.Fatalf("Unable to retrieve files: %v", err)
@@ -415,7 +436,10 @@ func googleDriveList(service *drive.Service) {
 		fmt.Println("No files found.")
 	} else {
 		for _, i := range r.Files {
-			fmt.Printf("%s (%s)\n", i.Name, i.Id)
+			fmt.Printf("Here is the file name: %v\nHere is the file ID: %v\nHere is the DriveID: %v\n"+
+				"Here is the description: %v\nHere is the WebViewLink: %v\nHere is the webContentLink: %v\n"+
+				"Here is owners: %v\nHere is permissions: %v\nHere is permisssionID: %v\n\n",
+				i.Name, i.Id, i.DriveId, i.Description, i.WebViewLink, i.WebContentLink, i.Owners, i.Permissions, i.PermissionIds)
 		}
 	}
 }
@@ -476,10 +500,15 @@ func createDir(service *drive.Service, name string, parentId string) (*drive.Fil
 
 /* Create Google Drive file in a specific directory */
 func createFile(service *drive.Service, name string, mimeType string, content io.Reader, parentId string) (*drive.File, error) {
+	//NOTE, you can pass in the parent ID if you want the file placed somewhere
+	//I do NOT do that becuase it was a pain to mess with permission IDS with folders in certain heirachies
 	f := &drive.File{
-		MimeType: mimeType,
-		Name:     name,
-		Parents:  []string{parentId},
+		MimeType:                     mimeType,
+		Name:                         name,
+		Parents:                      []string{},
+		Description:                  "A test file created for testing",
+		CopyRequiresWriterPermission: false,
+		DriveId:                      "12345",
 	}
 	file, err := service.Files.Create(f).Media(content).Do()
 
@@ -488,12 +517,45 @@ func createFile(service *drive.Service, name string, mimeType string, content io
 		return nil, err
 	}
 
-	fmt.Printf("DEBUG: The webcontent link is:%v\nWebview link is : %v\n", file.WebContentLink, file.WebViewLink)
+	fmt.Printf("DEBUG: The id is:%v\nDriveID is : %v\n", file.Id, file.DriveId)
 
 	return file, nil
 }
 
-/* Gets a test Google Drive file stuff to attach to a meeting */
-func getDriveFileInfo() {
+/* Create permissions for uploaded Google file */
+func createPermissionsGoogleAPI(service *drive.Service, theFileID string, permType string, role string) error {
+	/* There's other fields here but they cause a write error */
+	p := &drive.Permission{
+		Type: permType,
+		Role: role,
+	}
 
+	donePermissions, err := service.Permissions.Create(theFileID, p).Do()
+	if err != nil {
+		fmt.Printf("An error occurred: %v\n", err)
+		return err
+	} else {
+		fmt.Printf("Permissions added successfully: %v\n", donePermissions.Id)
+	}
+
+	return nil
+}
+
+/* Gets a test Google Drive file stuff to attach to a meeting */
+func getDriveFileInfo(d *drive.Service, fileId string) (error, *drive.File) {
+	f, err := d.Files.Get(fileId).Do()
+	if err != nil {
+		fmt.Printf("An error occurred: %v\n", err)
+		return err, nil
+	}
+	fmt.Printf("Description: %v\n", f.Description)
+	fmt.Printf("MIME type: %v\n", f.MimeType)
+	fmt.Printf("Here is the driveID: %v\n", f.DriveId)
+	fmt.Printf("Here is the id: %v\n", f.Id)
+	fmt.Printf("Here is the permissionID: %v\n", f.PermissionIds)
+	/*
+		fmt.Printf("Here is the webContentLink: %v\n", f.WebContentLink)
+		fmt.Printf("Here is the WebViewLink: %v\n", f.WebViewLink)
+	*/
+	return nil, f
 }
