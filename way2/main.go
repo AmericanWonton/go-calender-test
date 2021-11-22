@@ -146,15 +146,17 @@ func main() {
 	//googleCalendarCreateEventTest()
 	//googleCalendarReadTest()
 	//insertMeetingAttachment()
-
 	/*
 		getService, err := getService()
 		if err != nil {
 			panic(fmt.Sprintf("Could not get service: %v\n", err.Error()))
 		}
 
-		googleDriveList(getService)
+		getDriveFileInfo(getService, "1lXOsLvXCNnhLa737DgrEXRe6EuC9phve")
 	*/
+	fmt.Println()
+	fmt.Println()
+	//googleDriveList(getService)
 
 	//handleRequests() // handle requests
 }
@@ -270,13 +272,24 @@ func googleCalendarInsertTestTheSecond() {
 		log.Fatalf("Client Setup failed: %v", err)
 	}
 
-	/* */
+	/* Insert File into Google Drive */
+	theFileURL, theFileID, theFileTitle, theFileMimeType, anErr, msgs := insertMeetingAttachment()
+	if !anErr {
+		//Error with making attachment
+		fmt.Printf("There was an error creating document for Google Drive:\n")
+		for n := 0; n < len(msgs); n++ {
+			fmt.Printf("%v\n", msgs[n])
+		}
+	}
 	/* Attachments */
 	var theAttachment1 = &calendar.EventAttachment{}
-	(*theAttachment1).FileUrl = "https://drive.google.com/file/d/1m1Q3wEvmgmgly5IBVHVAqe4kMTpc82qG/view?usp=sharing"
-	(*theAttachment1).FileId = "1m1Q3wEvmgmgly5IBVHVAqe4kMTpc82qG"
-	(*theAttachment1).Title = "testfile.txt"
-	(*theAttachment1).MimeType = "text/plain"
+	(*theAttachment1).FileUrl = theFileURL
+	(*theAttachment1).FileId = theFileID
+	(*theAttachment1).Title = theFileTitle
+	(*theAttachment1).MimeType = theFileMimeType
+
+	/* DEBUG PRINT */
+	fmt.Printf("DEBUG: The fileURL is: %v\nThe File ID is: %v\n", theFileURL, theFileID)
 
 	var theAttachments []*calendar.EventAttachment
 	theAttachments = append(theAttachments, theAttachment1)
@@ -321,7 +334,11 @@ func googleCalendarInsertTestTheSecond() {
 }
 
 /* This is a test fnction for inserting a Google Drive Attachment to a meeting */
-func insertMeetingAttachment() {
+func insertMeetingAttachment() (string, string, string, string, bool, []string) {
+
+	//Define errors to return and messages
+	theBigErr, errMsgss := false, []string{}
+
 	wd, _ := os.Getwd()
 
 	/* Step 1 open file for working with */
@@ -365,7 +382,8 @@ func insertMeetingAttachment() {
 	}
 
 	//Step 5 edit the permissions for this file so others can download/use it
-	createPermissionsGoogleAPI(service2, file.Id, "anyone", "reader")
+	createPermissionsGoogleAPI(service2, dir.Id, "anyone", "reader")  //For the folder
+	createPermissionsGoogleAPI(service2, file.Id, "anyone", "reader") //For the file
 
 	//Get Google Drive File Info
 	anErr, theFile := getDriveFileInfo(service, file.Id)
@@ -373,8 +391,7 @@ func insertMeetingAttachment() {
 		panic(fmt.Sprintf("There was an error getting fileinfo: %v\n", anErr.Error()))
 	}
 
-	fmt.Printf("Here is the webContentLink: %v\n", theFile.WebContentLink)
-	fmt.Printf("Here is the WebViewLink: %v\n", theFile.WebViewLink)
+	return theFile.WebViewLink, theFile.Id, file.Name, theFile.MimeType, theBigErr, errMsgss
 }
 
 /* This creates a test Google Calendar Event */
@@ -427,7 +444,7 @@ func googleCalendarCreateEventTest() {
 func googleDriveList(service *drive.Service) {
 
 	r, err := service.Files.List().PageSize(400).
-		Fields("nextPageToken, files(id, name)").Do()
+		Fields("nextPageToken, files(id, name, webViewLink, mimeType)").Do()
 	if err != nil {
 		log.Fatalf("Unable to retrieve files: %v", err)
 	}
@@ -505,19 +522,21 @@ func createFile(service *drive.Service, name string, mimeType string, content io
 	f := &drive.File{
 		MimeType:                     mimeType,
 		Name:                         name,
-		Parents:                      []string{},
+		Parents:                      []string{parentId},
 		Description:                  "A test file created for testing",
 		CopyRequiresWriterPermission: false,
 		DriveId:                      "12345",
 	}
-	file, err := service.Files.Create(f).Media(content).Do()
+	file, err := service.Files.Create(f).Media(content).SupportsAllDrives(true).Do()
 
 	if err != nil {
 		log.Println("Could not create file: " + err.Error())
 		return nil, err
 	}
 
-	fmt.Printf("DEBUG: The id is:%v\nDriveID is : %v\n", file.Id, file.DriveId)
+	fmt.Printf("DEBUG: The id is:%v\n", file.Id)
+	//fmt.Printf("DEBUG: The WebContentLink is: %v\n", file.WebContentLink)
+	//fmt.Printf("DEBUG: The WebViewLink is: %v\n", file.WebViewLink)
 
 	return file, nil
 }
@@ -543,7 +562,7 @@ func createPermissionsGoogleAPI(service *drive.Service, theFileID string, permTy
 
 /* Gets a test Google Drive file stuff to attach to a meeting */
 func getDriveFileInfo(d *drive.Service, fileId string) (error, *drive.File) {
-	f, err := d.Files.Get(fileId).Do()
+	f, err := d.Files.Get(fileId).Fields("webViewLink, webContentLink, id, mimeType").Do()
 	if err != nil {
 		fmt.Printf("An error occurred: %v\n", err)
 		return err, nil
@@ -553,9 +572,9 @@ func getDriveFileInfo(d *drive.Service, fileId string) (error, *drive.File) {
 	fmt.Printf("Here is the driveID: %v\n", f.DriveId)
 	fmt.Printf("Here is the id: %v\n", f.Id)
 	fmt.Printf("Here is the permissionID: %v\n", f.PermissionIds)
-	/*
-		fmt.Printf("Here is the webContentLink: %v\n", f.WebContentLink)
-		fmt.Printf("Here is the WebViewLink: %v\n", f.WebViewLink)
-	*/
+
+	fmt.Printf("Here is the webContentLink: %v\n", f.WebContentLink)
+	fmt.Printf("Here is the WebViewLink: %v\n", f.WebViewLink)
+
 	return nil, f
 }
