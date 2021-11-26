@@ -72,7 +72,7 @@ func HandleError(w http.ResponseWriter, err error) {
 func handleRequests() {
 	myRouter := mux.NewRouter().StrictSlash(true)
 
-	fmt.Printf("DEBUG: We are serving files on internet\n")
+	fmt.Printf("DEBUG: We are serving files on internet 5000\n")
 	http.Handle("/favicon.ico", http.NotFoundHandler()) //For missing FavIcon
 	//Serve our pages
 	myRouter.HandleFunc("/", index)
@@ -142,7 +142,7 @@ func saveToken(path string, token *oauth2.Token) {
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano()) //Randomly Seed
 
-	googleCalendarInsertTestTheSecond()
+	//googleCalendarInsertTestTheSecond()
 	//googleCalendarCreateEventTest()
 	//googleCalendarReadTest()
 	//insertMeetingAttachment()
@@ -154,11 +154,9 @@ func main() {
 
 		getDriveFileInfo(getService, "1lXOsLvXCNnhLa737DgrEXRe6EuC9phve")
 	*/
-	fmt.Println()
-	fmt.Println()
 	//googleDriveList(getService)
 
-	//handleRequests() // handle requests
+	handleRequests() // handle requests
 }
 
 /* This gets our enviornment varialbles to create our google calendar information */
