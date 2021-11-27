@@ -14,6 +14,7 @@ function calendarVariableSet(gClientID, gClientSecretID, gCalendarAPIKey, idCale
 
 
 /* Initialize the 'FullCalendar' plugin into the 'calendar' div*/
+/*
 document.addEventListener('DOMContentLoaded', function(){
     console.log("DEBUG: We can recognize fullcalendar");
     /* Documentation Refferences:
@@ -25,6 +26,7 @@ document.addEventListener('DOMContentLoaded', function(){
     PUT COMMA AFTER LAST EVENT IN ARRAY, OR IE WILL HAVE ISSUES
     
     */
+   /*
     var calendarEl = document.getElementById('calendar');
     var calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
@@ -99,7 +101,6 @@ document.addEventListener('DOMContentLoaded', function(){
     //Handler for clicking dates
     calendar.on('dateClick', function(info){
       console.log("Clicked on: " + info.dateStr);
-      modalViewCreate();
     });
     //Set Height Initially
     //calendar.setOption('height', 650);
@@ -109,8 +110,4 @@ document.addEventListener('DOMContentLoaded', function(){
     calendar.render(); //Render the calendar
     console.log("Initialize Calender");
 });
-
-/* Creates the modal view after clicking on date */
-function modalViewCreate(){
-
-}
+*/

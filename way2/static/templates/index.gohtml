@@ -17,20 +17,69 @@
         <link href="static/fullcalendar-5.10.0/lib/main.css" rel="stylesheet" />
         <script src="static/fullcalendar-5.10.0/lib/main.js"></script>
         <script src="static/js/fullcalendar.js"></script>
+        <script src="static/js/modalPopUp.js"></script>
         {{/* Here is our Javascript or additional code needed */}}
-        <script>
-            calendarVariableSet({{.PassedCalendarInfo.GoogleClientID}}, {{.PassedCalendarInfo.GoogleClientSecret}},
-            {{.PassedCalendarInfo.CalendarAPIKey}}, {{.PassedCalendarInfo.CalendarID}});
-        </script>
+        <!--
+
+            <script>
+                calendarVariableSet({{.PassedCalendarInfo.GoogleClientID}}, {{.PassedCalendarInfo.GoogleClientSecret}},
+                {{.PassedCalendarInfo.CalendarAPIKey}}, {{.PassedCalendarInfo.CalendarID}});
+            </script>
+
+        -->
     </head>
     <body>
         {{/* Here is our header */}}
         
-        <p>Google Login</p>
-        <div class="stuffHolder">
-
+        <div class="stuffHolder" id="stuffHolder">
+            <button id="modalBtn"> click me, I make a modal</button>
+            <div class="modal" id="modal">
+                <div class="modal-header">
+                    <span class="closeBtn" id="closeBtn">&times;</span>
+                    <h1>I am the Header</h1>
+                </div>
+                <div class="modal-content">
+                    <p>this is the text inside the modal</p>
+                    <button class="closeBtn" id="modalCloseBtn">Click me, I close the Modal</button>
+                </div>
+                <div class="modal-footer">
+                    <h2>I am the Footer</h2>
+                </div>
+            </div>
         </div>
-        <div id='calendar'></div>
+
+        <script>
+            var modalBtn = document.getElementById("modalBtn");
+            var modal = document.getElementById("modal");
+            var closeBtn = document.getElementById("closeBtn");
+            var modalCloseBtn = document.getElementById("modalCloseBtn");
+
+            //Wait until window is loaded
+            window.addEventListener('DOMContentLoaded', function(){
+                modalBtn.addEventListener("click", function(){
+                    modal.style.display = "block";
+                });
+                
+                closeBtn.addEventListener("click", function(){
+                    modal.style.display = "none";
+                });
+
+                modalCloseBtn.addEventListener("click", function(){
+                    modal.style.display = "none";
+                });
+                window.addEventListener("click", function(e){
+                    if(e.target == modal){
+                    modal.style.display = "none";
+                    }
+                });
+            });
+        </script>
+        <!-- The Calendar content -->
+        <!--
+            <div id='calendar'></div>
+
+        -->
+        
         
         {{/* Here is our footer */}}
     </body>
