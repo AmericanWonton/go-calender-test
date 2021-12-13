@@ -4,6 +4,8 @@ let googleClientSecret = "";
 let thegoogleCalendarAPIKey = "";
 let calendarID = "";
 
+/* Variables for dates */
+
 /* Sets variables for Calendar */
 function calendarVariableSet(gClientID, gClientSecretID, gCalendarAPIKey, idCalendar){
     googleClientID = gClientID;
@@ -14,7 +16,6 @@ function calendarVariableSet(gClientID, gClientSecretID, gCalendarAPIKey, idCale
 
 
 /* Initialize the 'FullCalendar' plugin into the 'calendar' div*/
-/*
 document.addEventListener('DOMContentLoaded', function(){
     console.log("DEBUG: We can recognize fullcalendar");
     /* Documentation Refferences:
@@ -26,7 +27,7 @@ document.addEventListener('DOMContentLoaded', function(){
     PUT COMMA AFTER LAST EVENT IN ARRAY, OR IE WILL HAVE ISSUES
     
     */
-   /*
+
     var calendarEl = document.getElementById('calendar');
     var calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
@@ -110,4 +111,4 @@ document.addEventListener('DOMContentLoaded', function(){
     calendar.render(); //Render the calendar
     console.log("Initialize Calender");
 });
-*/
+

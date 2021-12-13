@@ -32,7 +32,32 @@ type CalendarPassing struct {
 	CalendarID         string `json:"CalendarID"`
 	GoogleClientID     string `json:"GoogleClientID"`
 	GoogleClientSecret string `json:"GoogleClientSecret"`
+	GoogleClientCalendarRefreshToken string `json:"GoogleClientCalendarRefreshToken"`
+	GoogleClientCalendarAccessToken string `json:"GoogleClientCalendarAccessToken"`
+	CurrentEmail string `json:"CurrentEmail"`
+	CurrentPWord string `json:"CurrentPWord"`
+	EmailClient string `json:"EmailClient"`
+	EmailSecret string `json:"EmailSecret"`
+	EmailAccess string `json:"EmailAccess"`
+	EmailRefresh string `json:"EmailRefresh"`
+	GoogleDriveClientID string `json:"GoogleDriveClientID"`
+	GoogleDriveClientSecret string `json:"GoogleDriveClientSecret"`
+	GoogleDriveRefresh string `json:"GoogleDriveRefresh"`
+	GoogleDriveAccess string `json:"GoogleDriveAccess"`
 	CurrentTime        string `json:"CurrentTime"`
+	CalendarAllDatesFilled CalendarFilledDates `json:"CalendarAllDatesFilled"`
+}
+
+type CalendarFilledDates struct {
+	CalendarDayFilled        []CalendarFilledDate `json:"CalendarDayFilled"`
+}
+
+type CalendarFilledDate struct {
+	AllDay bool `json:"AllDay"`
+	DateStart string `json:"DateStart"`
+	DateEnd string `json:"DateEnd"`
+	DateTimeStart string `json:"DateTimeStart"`
+	DateTimeEnd string `json:"DateTimeEnd"`
 }
 
 var calendarPassing CalendarPassing
@@ -45,11 +70,17 @@ type ViewData struct {
 func init() {
 	template1 = template.Must(template.ParseGlob("./static/templates/*")) //pass templates
 	getCalendarCreds()                                                    //Get calendar creds
+	OAuthGmailService() //Initialize Email 
+	OAuthCalendarService() //Initialize Calendar 
+	OAuthGoogleDriveService() //Initilaize Google Drive
 }
 
 //Handles the Index requests; Ask User if they're legal here
 func index(w http.ResponseWriter, r *http.Request) {
 	//Build info to pass
+	//Rest Calendar passed dates
+	calendarPassing.CalendarAllDatesFilled = fillCalendarDates()
+	googleCalendarReadTest()
 	currentTime := time.Now()
 	calendarPassing.CurrentTime = currentTime.Format("2006-01-02")
 	vd := ViewData{
@@ -142,53 +173,15 @@ func saveToken(path string, token *oauth2.Token) {
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano()) //Randomly Seed
 
-	//googleCalendarInsertTestTheSecond()
-	//googleCalendarCreateEventTest()
-	//googleCalendarReadTest()
-	//insertMeetingAttachment()
-	/*
-		getService, err := getService()
-		if err != nil {
-			panic(fmt.Sprintf("Could not get service: %v\n", err.Error()))
-		}
-
-		getDriveFileInfo(getService, "1lXOsLvXCNnhLa737DgrEXRe6EuC9phve")
-	*/
-	//googleDriveList(getService)
-
 	handleRequests() // handle requests
 }
 
-/* This gets our enviornment varialbles to create our google calendar information */
-func getCalendarCreds() {
-	_, ok := os.LookupEnv("GDESS_GOOGLE_CLIENT_ID")
-	if !ok {
-		message := "This ENV Variable is not present: " + "GDESS_GOOGLE_CLIENT_ID"
-		panic(message)
-	}
+/* This fills our dates; called everytime the index page is meant to be loaded */
+func fillCalendarDates()CalendarFilledDates{
+	theReturnedFilledDates:= CalendarFilledDates{}
 
-	_, ok2 := os.LookupEnv("GDESS_GOOGLE_CLIENT_SECRET")
-	if !ok2 {
-		message := "This ENV Variable is not present: " + "GDESS_GOOGLE_CLIENT_SECRET"
-		panic(message)
-	}
 
-	_, ok3 := os.LookupEnv("GDESS_GOOGLE_CALENDAR_APIKEY")
-	if !ok3 {
-		message := "This ENV Variable is not present: " + "GDESS_GOOGLE_CALENDAR_APIKEY"
-		panic(message)
-	}
-
-	_, ok4 := os.LookupEnv("GDESS_CALENDAR_ID")
-	if !ok4 {
-		message := "This ENV Variable is not present: " + "GDESS_CALENDAR_ID"
-		panic(message)
-	}
-
-	calendarPassing.GoogleClientID = os.Getenv("GDESS_GOOGLE_CLIENT_ID")
-	calendarPassing.GoogleClientSecret = os.Getenv("GDESS_GOOGLE_CLIENT_SECRET")
-	calendarPassing.CalendarAPIKey = os.Getenv("GDESS_GOOGLE_CALENDAR_APIKEY")
-	calendarPassing.CalendarID = os.Getenv("GDESS_CALENDAR_ID")
+	return theReturnedFilledDates
 }
 
 /* This does all the fun Google Calender reading */
@@ -196,28 +189,8 @@ func googleCalendarReadTest() {
 	currentTime := time.Now() //Used for debugging
 	fmt.Println("Here is the current Google time in YYYY-MM-DD : ", currentTime.Format("2006-01-02"))
 
-	ctx := context.Background()
-	b, err := ioutil.ReadFile("credentials.json")
-	if err != nil {
-		log.Fatalf("Unable to read client secret file: %v", err)
-	}
-
-	// If modifying these scopes, delete your previously saved token.json.
-	config, err := google.ConfigFromJSON(b, calendar.CalendarReadonlyScope)
-	if err != nil {
-		fmt.Printf("Unable to parse client secret file to config: %v", err)
-		log.Fatalf("Unable to parse client secret file to config: %v", err)
-	}
-	client := getClient(config)
-
-	srv, err := calendar.NewService(ctx, option.WithHTTPClient(client))
-	if err != nil {
-		fmt.Printf("Unable to retrieve Calendar client: %v", err)
-		log.Fatalf("Unable to retrieve Calendar client: %v", err)
-	}
-
 	t := time.Now().Format(time.RFC3339)
-	events, err := srv.Events.List("primary").ShowDeleted(false).
+	events, err := GoogleCalendarService.Events.List("primary").ShowDeleted(false).
 		SingleEvents(true).TimeMin(t).MaxResults(10).OrderBy("startTime").Do()
 	if err != nil {
 		log.Fatalf("Unable to retrieve next ten of the user's events: %v", err)
@@ -228,47 +201,22 @@ func googleCalendarReadTest() {
 	} else {
 		for _, item := range events.Items {
 			date := item.Start.DateTime
+			//This appears to be for all day items
 			if date == "" {
 				date = item.Start.Date
 			}
-			fmt.Printf("%v (%v)\n", item.Summary, date)
-			fmt.Printf("Here's a description: %v\n", item.Description)
+			fmt.Printf("Here is Item.Summary: %v\nHere is item.Description: %v\n" +
+			"Here is item.Start.DateTime: %v\nHere is item.End.DateTime: %v\n" +
+			"Here is item.Start.Date: %v\nHere is item.End.Date: %v\n",
+			item.Summary, item.Description, item.Start.DateTime, item.End.DateTime,
+			item.Start.Date, item.End.Date)
+			fmt.Println()
 		}
 	}
-
 }
 
 /* This is another test function for Inserting a Google Calendar Event*/
 func googleCalendarInsertTestTheSecond() {
-	ctx := context.Background()
-
-	wd, _ := os.Getwd()
-	credDir := filepath.Join(wd, "creds", "credentials-insert.json")
-	b, err := ioutil.ReadFile(credDir)
-	if err != nil {
-		log.Fatalf("Unable to read client secret file: %v", err)
-	}
-
-	// If modifying these scopes, delete your previously saved token.json.
-	config, err := google.ConfigFromJSON(b, calendar.CalendarEventsScope)
-	if err != nil {
-		fmt.Printf("Unable to parse client secret file to config: %v", err)
-		log.Fatalf("Unable to parse client secret file to config: %v", err)
-	}
-
-	tokFile := filepath.Join(wd, "creds", "insertToken.json")
-	tok, err := tokenFromFile(tokFile)
-	if err != nil {
-		tok = getTokenFromWeb(config)
-		saveToken(tokFile, tok)
-	}
-
-	calendarService, err := calendar.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, tok)))
-
-	if err != nil {
-		fmt.Printf("Client Setup failed: %v", err)
-		log.Fatalf("Client Setup failed: %v", err)
-	}
 
 	/* Insert File into Google Drive */
 	theFileURL, theFileID, theFileTitle, theFileMimeType, anErr, msgs := insertMeetingAttachment()
@@ -320,7 +268,7 @@ func googleCalendarInsertTestTheSecond() {
 	}
 
 	calendarId := "primary"
-	event, err2 := calendarService.Events.Insert(calendarId, theEvent).SupportsAttachments(true).Do()
+	event, err2 := GoogleCalendarService.Events.Insert(calendarId, theEvent).SupportsAttachments(true).Do()
 	if err2 != nil {
 		fmt.Printf("Unable to create event: %v\n", err2.Error)
 		//fmt.Printf("Here is the header: %v\n", event.Header)
@@ -349,21 +297,14 @@ func insertMeetingAttachment() (string, string, string, string, bool, []string) 
 
 	defer f.Close()
 
-	/* Step 2 get Google Service */
-	service, err := getService()
-
-	if err != nil {
-		panic(fmt.Sprintf("Uh oh, couldn't create service: %v\n", err.Error()))
-	}
-
 	// Step 3. Create the directory
-	dir, err2 := createDir(service, "testGoogleDriveFolder", "root")
+	dir, err2 := createDir(GoogleDriveService, "testGoogleDriveFolder", "root")
 	if err2 != nil {
 		panic(fmt.Sprintf("Uh oh, couldn't create directory: %v\n", err2.Error()))
 	}
 
 	// Step 4. Create the file and upload its content
-	file, err := createFile(service, "testfile.txt", "text/plain", f, dir.Id)
+	file, err := createFile(GoogleDriveService, "testfile.txt", "text/plain", f, dir.Id)
 
 	if err != nil {
 		panic(fmt.Sprintf("Could not create file: %v\n", err))
@@ -372,19 +313,13 @@ func insertMeetingAttachment() (string, string, string, string, bool, []string) 
 	fmt.Printf("File '%s' successfully uploaded in '%s' directory\n", file.Name, dir.Name)
 
 	time.Sleep(2 * time.Second) //DEBUG WAIT
-	//Debug create second service
-	service2, err := getService()
-
-	if err != nil {
-		panic(fmt.Sprintf("Uh oh, couldn't create service: %v\n", err.Error()))
-	}
 
 	//Step 5 edit the permissions for this file so others can download/use it
-	createPermissionsGoogleAPI(service2, dir.Id, "anyone", "reader")  //For the folder
-	createPermissionsGoogleAPI(service2, file.Id, "anyone", "reader") //For the file
+	createPermissionsGoogleAPI(GoogleDriveService, dir.Id, "anyone", "reader")  //For the folder
+	createPermissionsGoogleAPI(GoogleDriveService, file.Id, "anyone", "reader") //For the file
 
 	//Get Google Drive File Info
-	anErr, theFile := getDriveFileInfo(service, file.Id)
+	anErr, theFile := getDriveFileInfo(GoogleDriveService, file.Id)
 	if anErr != nil {
 		panic(fmt.Sprintf("There was an error getting fileinfo: %v\n", anErr.Error()))
 	}
@@ -394,26 +329,6 @@ func insertMeetingAttachment() (string, string, string, string, bool, []string) 
 
 /* This creates a test Google Calendar Event */
 func googleCalendarCreateEventTest() {
-
-	ctx := context.Background()
-	b, err := ioutil.ReadFile("credentials-insert.json")
-	if err != nil {
-		log.Fatalf("Unable to read client secret file: %v", err)
-	}
-
-	// If modifying these scopes, delete your previously saved token.json.
-	config, err := google.ConfigFromJSON(b, calendar.CalendarScope)
-	if err != nil {
-		fmt.Printf("Unable to parse client secret file to config: %v", err)
-		log.Fatalf("Unable to parse client secret file to config: %v", err)
-	}
-	client := getClient(config)
-
-	srv, err := calendar.NewService(ctx, option.WithHTTPClient(client))
-	if err != nil {
-		fmt.Printf("Unable to retrieve Calendar client: %v", err)
-		log.Fatalf("Unable to retrieve Calendar client: %v", err)
-	}
 
 	theEvent := &calendar.Event{
 		Start: &calendar.EventDateTime{
@@ -430,7 +345,7 @@ func googleCalendarCreateEventTest() {
 	}
 
 	calendarId := "primary"
-	event, err2 := srv.Events.Insert(calendarId, theEvent).Do()
+	event, err2 := GoogleCalendarService.Events.Insert(calendarId, theEvent).Do()
 	if err2 != nil {
 		fmt.Printf("Unable to create event: %v\n", err2)
 		log.Fatalf("Unable to create event. %v\n", err2)
@@ -457,42 +372,6 @@ func googleDriveList(service *drive.Service) {
 				i.Name, i.Id, i.DriveId, i.Description, i.WebViewLink, i.WebContentLink, i.Owners, i.Permissions, i.PermissionIds)
 		}
 	}
-}
-
-/* Get Google Drive Service */
-func getService() (*drive.Service, error) {
-	wd, _ := os.Getwd()
-	credDir := filepath.Join(wd, "creds", "google-drive-credentials.json")
-
-	b, err := ioutil.ReadFile(credDir)
-	if err != nil {
-		fmt.Printf("Unable to read credentials.json file. Err: %v\n", err)
-		return nil, err
-	}
-
-	// If modifying these scopes, delete your previously saved token.json.
-	config, err := google.ConfigFromJSON(b, drive.DriveFileScope)
-
-	if err != nil {
-		return nil, err
-	}
-
-	ctx := context.Background()
-	tokFile := filepath.Join(wd, "creds", "googleDriveToken.json")
-	tok, err := tokenFromFile(tokFile)
-	if err != nil {
-		tok = getTokenFromWeb(config)
-		saveToken(tokFile, tok)
-	}
-
-	service, err := drive.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, tok)))
-
-	if err != nil {
-		fmt.Printf("Cannot create the Google Drive service: %v\n", err)
-		return nil, err
-	}
-
-	return service, err
 }
 
 /* Create Google Drive Directory */
