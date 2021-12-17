@@ -6,61 +6,22 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
+	"strconv"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/gorilla/mux"
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 	"google.golang.org/api/calendar/v3"
 	"google.golang.org/api/drive/v3"
-	"google.golang.org/api/option"
 )
 
 /* TEMPLATE DEFINITION */
 var template1 *template.Template
-
-/* Google Client/Calendar information */
-
-type CalendarPassing struct {
-	CalendarAPIKey     string `json:"CalendarAPIKey"`
-	CalendarID         string `json:"CalendarID"`
-	GoogleClientID     string `json:"GoogleClientID"`
-	GoogleClientSecret string `json:"GoogleClientSecret"`
-	GoogleClientCalendarRefreshToken string `json:"GoogleClientCalendarRefreshToken"`
-	GoogleClientCalendarAccessToken string `json:"GoogleClientCalendarAccessToken"`
-	CurrentEmail string `json:"CurrentEmail"`
-	CurrentPWord string `json:"CurrentPWord"`
-	EmailClient string `json:"EmailClient"`
-	EmailSecret string `json:"EmailSecret"`
-	EmailAccess string `json:"EmailAccess"`
-	EmailRefresh string `json:"EmailRefresh"`
-	GoogleDriveClientID string `json:"GoogleDriveClientID"`
-	GoogleDriveClientSecret string `json:"GoogleDriveClientSecret"`
-	GoogleDriveRefresh string `json:"GoogleDriveRefresh"`
-	GoogleDriveAccess string `json:"GoogleDriveAccess"`
-	CurrentTime        string `json:"CurrentTime"`
-	CalendarAllDatesFilled CalendarFilledDates `json:"CalendarAllDatesFilled"`
-}
-
-type CalendarFilledDates struct {
-	CalendarDayFilled        []CalendarFilledDate `json:"CalendarDayFilled"`
-}
-
-type CalendarFilledDate struct {
-	AllDay bool `json:"AllDay"`
-	DateStart string `json:"DateStart"`
-	DateEnd string `json:"DateEnd"`
-	DateTimeStart string `json:"DateTimeStart"`
-	DateTimeEnd string `json:"DateTimeEnd"`
-}
-
-var calendarPassing CalendarPassing
 
 /* Webpage information passing */
 type ViewData struct {
@@ -69,6 +30,7 @@ type ViewData struct {
 
 func init() {
 	template1 = template.Must(template.ParseGlob("./static/templates/*")) //pass templates
+	potentialDates = make(map[string]Appointment)
 	getCalendarCreds()                                                    //Get calendar creds
 	OAuthGmailService() //Initialize Email 
 	OAuthCalendarService() //Initialize Calendar 
@@ -79,8 +41,7 @@ func init() {
 func index(w http.ResponseWriter, r *http.Request) {
 	//Build info to pass
 	//Rest Calendar passed dates
-	calendarPassing.CalendarAllDatesFilled = fillCalendarDates()
-	googleCalendarReadTest()
+	calendarPassing.CalendarAllDatesFilled.CalendarDayFilled = getDatesForUse()
 	currentTime := time.Now()
 	calendarPassing.CurrentTime = currentTime.Format("2006-01-02")
 	vd := ViewData{
@@ -172,14 +133,37 @@ func saveToken(path string, token *oauth2.Token) {
 
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano()) //Randomly Seed
+	
+	potentialDates = make(map[string]Appointment)
+	assembledDateTime := strconv.Itoa(time.Now().Year()) + "-" + strconv.Itoa(int(time.Now().Month())) + "-" +
+	strconv.Itoa(time.Now().Day()) + "T09:00:00-06:00"
+	startTime, err := time.Parse(time.RFC3339Nano, assembledDateTime)
+	if err != nil {
+		fmt.Printf("here is our big error: %v\n", err.Error())
+	}
+	endTime := startTime.AddDate(0,0, 8 * 2)
 
-	handleRequests() // handle requests
+	fmt.Printf("Starttime is: %v\n EndTime is %v\n", startTime, endTime)
+
+	startTime = startTime.Add(time.Hour * 2)
+	fmt.Printf("DEBUG: End time is: %v\n", startTime)
+
+	fillPotentialAppointments()
+
+	//handleRequests() // handle requests
 }
 
 /* This fills our dates; called everytime the index page is meant to be loaded */
 func fillCalendarDates()CalendarFilledDates{
 	theReturnedFilledDates:= CalendarFilledDates{}
 
+	theTimeNow := time.Now().Format(time.RFC3339Nano)
+
+	fmt.Printf("Here is the time now: %v\n", theTimeNow)
+
+	//Time 15 days from now
+	theTimeFifDays := time.Now().AddDate(0,0, 8 * 2).Format(time.RFC3339Nano)
+	fmt.Printf("Here is the time in two weeks: %v\n", theTimeFifDays)
 
 	return theReturnedFilledDates
 }

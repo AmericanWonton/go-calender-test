@@ -26,4 +26,16 @@
     <script src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.4.1.min.js"></script>
 {{end}}
 
+
+{{define "setDates"}}
+    <script>
+        var passedAllDay = Boolean("{{.AllDay}}");
+        var passedDateStart = String("{{.DateStart}}");
+        var passedDateEnd = String("{{.DateEnd}}");
+        var passedDateTimeStart = String("{{.DateTimeStart}}");
+        var passedDateTimeEnd = String("{{.DateTimeEnd}}");
+        dateSetter(passedAllDay, passedDateStart, passedDateEnd, passedDateTimeStart, passedDateTimeEnd);
+    </script>
+{{end}}
+
 {{/******* END OF HEAD SECTION *****/}}

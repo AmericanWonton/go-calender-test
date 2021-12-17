@@ -3,8 +3,6 @@
     <head>
         {{/* Here is our meta charset and title */}}
         {{template "meta-title"}}
-        {{/* Need this for JuicyAds site verification */}}
-        <meta name="juicyads-site-verification" content="fb19097fa687d6d30d4510288a4cc96c">
         {{/* Here is our pixel density markup */}}
         {{template "pixel-dense"}}
         {{/* Here is our FavIcon */}}
@@ -13,16 +11,27 @@
         {{template "fonts1"}}
         {{/* Here are our Media Query and stylesheets */}}
         {{template "media-queries"}}
+        <script src="static/js/dateselector.js"></script>
+        {{range $element := .PassedCalendarInfo.CalendarAllDatesFilled.CalendarDayFilled}}
+            {{template "setDates" $element}}
+        {{end}}
         {{/* Here are our fullcalendar files */}}
+        <!--
         <link href="static/fullcalendar-5.10.0/lib/main.css" rel="stylesheet" />
         <script src="static/fullcalendar-5.10.0/lib/main.js"></script>
         <script src="static/js/fullcalendar.js"></script>
         <script src="static/js/modalPopUp.js"></script>
+        -->
         {{/* Here is our Javascript or additional code needed */}}
+        {{/* 
+        
         <script>
             calendarVariableSet({{.PassedCalendarInfo.GoogleClientID}}, {{.PassedCalendarInfo.GoogleClientSecret}},
             {{.PassedCalendarInfo.CalendarAPIKey}}, {{.PassedCalendarInfo.CalendarID}});
         </script>
+        
+        
+         */}}
     </head>
     <body>
         {{/* Here is our header */}}
