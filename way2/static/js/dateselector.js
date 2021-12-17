@@ -1,14 +1,22 @@
 var allDates = [];
 
-function dateSetter(pAllDay, pDateStart, pDateEnd, pDateTimeStart, pDateTimeEnd ){
+function dateSetter(pIdentifierCode, pDateTimeStart, pDateTimeEnd, pDayNumber, 
+    pHourStart, pHourEnd, pMonthNum, pYearNum, pFullDateDisplay,
+    pApptTimeDisplay, pApptDateDisplay){
     var theDate = {
-        AllDay: Boolean(pAllDay),
-        DateStart: String(pDateStart),
-        DateEnd: String(pDateEnd),
+        IdentifierCode: String(pIdentifierCode),
         DateTimeStart: String(pDateTimeStart),
-        DateTimeEnd: String(pDateTimeEnd)
+        DateTimeEnd: String(pDateTimeEnd),
+        DayNumber: Number(pDayNumber),
+        HourStart: String(pHourStart),
+        HourEnd: String(pHourEnd),
+        MonthNum: Number(pMonthNum),
+        YearNum: Number(pYearNum),
+        FullDateDisplay: String(pFullDateDisplay),
+        ApptTimeDisplay: String(pApptTimeDisplay),
+        ApptDateDisplay: String(pApptDateDisplay),
     }
 
-    console.log("Here is this date: " + theDate.DateEnd + " " + theDate.DateTimeStart);
+    console.log("Here is this date: " + theDate.DateTimeStart + " " + theDate.DateTimeEnd);
     allDates.push(theDate);
 }

@@ -12,7 +12,7 @@
         {{/* Here are our Media Query and stylesheets */}}
         {{template "media-queries"}}
         <script src="static/js/dateselector.js"></script>
-        {{range $element := .PassedCalendarInfo.CalendarAllDatesFilled.CalendarDayFilled}}
+        {{range $element := .PassedCalendarInfo.PossibleDates}}
             {{template "setDates" $element}}
         {{end}}
         {{/* Here are our fullcalendar files */}}

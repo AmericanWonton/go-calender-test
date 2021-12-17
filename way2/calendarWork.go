@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 )
+
 /* Google Client/Calendar information */
 
 type CalendarPassing struct {
@@ -26,6 +28,7 @@ type CalendarPassing struct {
 	GoogleDriveRefresh string `json:"GoogleDriveRefresh"`
 	GoogleDriveAccess string `json:"GoogleDriveAccess"`
 	CurrentTime        string `json:"CurrentTime"`
+	PossibleDates []Appointment `json:"PossibleDates"`
 	CalendarAllDatesFilled CalendarFilledDates `json:"CalendarAllDatesFilled"`
 }
 
@@ -49,16 +52,27 @@ type DateAvailable struct {
 
 //IDK
 type Appointment struct {
+	IdentifierCode string 	`json:"IdentifierCode"`
 	DateTimeStart string `json:"DateTimeStart"`
 	DateTimeEnd string `json:"DateTimeEnd"`
 	DayNumber int `json:"DayNumber"`
+	HourStart string `json:"HourStart"`
+	HourEnd string `json:"HourEnd"`
 	MonthNum int 	`json:"MonthNum"`
+	YearNum int 	`json:"YearNum"`
+	FullDateDisplay string `json:"FullDateDisplay"`
+	ApptTimeDisplay string `json:"ApptTimeDisplay"`
+	ApptDateDisplay string `json:"ApptDateDisplay"`
 }
 
 var calendarPassing CalendarPassing
 var dateFiller CalendarFilledDates
 
 var potentialDates map[string]Appointment
+var potentialDatesSlice []Appointment
+
+const LAYOUTISO = "2006-01-02"
+const LAYOUTUS = "January 2, 2006"
 
 /* This function uses our Google Calendar to get dates
 within 16 days and 
@@ -117,43 +131,57 @@ func fillPotentialAppointments(){
 	}
 	endTime := startTime.AddDate(0,0, 8 * 2)
 
-	fmt.Printf("Starttime is: %v\n EndTime is %v\n", startTime, endTime)
-
 	//While StartTime is less than endTime
 	for !startTime.After(endTime) {
 		/* Initial check to see if date is Saturday or Sunday */
 		if startTime.Weekday().String() == "Sunday" {
 			//It's Sunday, add a day onto Monday
 			startTime = startTime.AddDate(0,0, 1)
-			fmt.Printf("DEBUG: Skipping Sunday\n")
 		} else if startTime.Weekday().String() == "Saturday" {
 			//It's Saturday, add 2 days onto Monday
 			startTime = startTime.AddDate(0,0, 2)
-			fmt.Printf("DEBUG: Skipping Saturday\n")
 		} else {
 			//It is a normal weekday, begin cycling through below
 			for startTime.Hour() < 15 {
 				endTimeInsert := startTime.Add(time.Hour * 1)
-				fmt.Printf("DEBUG: End time is: %v\n", endTimeInsert)
+				/* Combination of the following: month num, -,  day, -, startTime Hour*/
+				stringAssemble := convertCalendarMonth(startTime.Month().String()) + "-" + 
+				convertCalendarDay(startTime.Day()) + 
+				"-" + convertCalendarHour(startTime.Hour())
+				/* Should be displayed as the following: 1999/08/25 from 09:00-13:00*/
+				displayAssemble := strconv.Itoa(startTime.Year()) + "/" + 
+				convertCalendarMonth(startTime.Month().String()) + "/" + convertCalendarDay(startTime.Day()) + 
+				" from " + convertCalendarHour(startTime.Hour()) + ":00-" +
+				convertCalendarHour(endTimeInsert.Hour()) + ":00"
+
 				theAppointment := Appointment{
+					IdentifierCode: stringAssemble,
 					DateTimeStart: startTime.String(),
 					DateTimeEnd: endTimeInsert.String(),
 					DayNumber: startTime.Day(),
+					HourStart: convertCalendarHour(startTime.Hour()),
+					HourEnd: convertCalendarHour(endTimeInsert.Hour()),
 					MonthNum: int(startTime.Month()),
+					YearNum: startTime.Year(),
+					FullDateDisplay: displayAssemble,
+					ApptTimeDisplay: "From " + convertCalendarHour(startTime.Hour()) + ":00-" +
+					convertCalendarHour(endTimeInsert.Hour()) + ":00",
+					ApptDateDisplay: strconv.Itoa(startTime.Year()) + "/" + 
+					convertCalendarMonth(startTime.Month().String()) + "/" + convertCalendarDay(startTime.Day()),
 				}
-				/* Combination of the following: month num, -,  day, -, startTime Hour*/
-				stringAssemble := strconv.Itoa(int(startTime.Month())) + "-" + strconv.Itoa(startTime.Day()) + 
-				"-" + strconv.Itoa(startTime.Hour())
+				
 				potentialDates[stringAssemble] = theAppointment
+				potentialDatesSlice = append(potentialDatesSlice, theAppointment)
 
 				startTime = startTime.Add(time.Hour	* 1) //Add an hour for the loop
 			}
+			startTime = startTime.AddDate(0,0,1)
 		}
-		//Head off to next day
-		startTime = startTime.AddDate(0,0,1)
+		
+		
 		//Set time back to 9am
-		calendarMonthStr := convertCalendarDay(startTime.Month().String())
-		calendarDayStr := convertCalendaryMonth(startTime.Day())
+		calendarMonthStr := convertCalendarMonth(startTime.Month().String())
+		calendarDayStr := convertCalendarDay(startTime.Day())
 		assembledDateTimeTwo := strconv.Itoa(startTime.Year()) + "-" + calendarMonthStr + "-" +
 		calendarDayStr + "T09:00:00-06:00"
 		startTime, err = time.Parse(time.RFC3339Nano, assembledDateTimeTwo)
@@ -164,13 +192,136 @@ func fillPotentialAppointments(){
 	}
 
 	/* DEBUG List our created days */
-	for key, element := range potentialDates{
-		fmt.Println("Here is our key: %v\nHere is our Value: %v\n\n", key, element)
+	/*
+	for x := 0; x < len(potentialDatesSlice); x++{
+		fmt.Printf("Here is the key: %v\n", potentialDatesSlice[x].IdentifierCode)
 	}
+	*/
+	/*
+	for key, _ := range potentialDates{
+		fmt.Printf("Here is our key: %v\n", key)
+	}
+	*/
 }
 
-/* Int conversion for days */
-func convertCalendarDay(theMonth string) string{
+/* Remove Certain Appointments based on dateFiller and potentialDatesSlice*/
+func removeCertainAppointments(){
+	
+	/* Remove all events for today,(Users can't schedule for today */
+	for w := 0; w < len(dateFiller.CalendarDayFilled); w++ {
+		//Get Current Day
+		theCurrentDate := time.Now()
+		theMonthTime := convertCalendarMonth(theCurrentDate.Month().String())
+		theDayTime := convertCalendarDay(theCurrentDate.Day())
+
+		/* Split each code within the array, see if they have the month
+		and the same day; then remove them */
+		for l := 0; l < len(potentialDatesSlice); l++ {
+			fullStringSplit := strings.Split(potentialDatesSlice[l].IdentifierCode, "-")
+			theMonth := fullStringSplit[0]
+			theDay := fullStringSplit[1]
+
+			if (strings.ToLower(theDay) == strings.ToLower(theDayTime)) && 
+			(strings.ToLower(theMonth) == strings.ToLower(theMonthTime)){
+				//The Day and Month match, remove them from the slice
+				removePlace := l
+				copy(potentialDatesSlice[removePlace:], potentialDatesSlice[removePlace + 1:])
+				potentialDatesSlice[len(potentialDatesSlice) - 1] = Appointment{}
+				potentialDatesSlice = potentialDatesSlice[:len(potentialDatesSlice) -1]
+			}
+		}
+	}
+
+	for n := 0; n < len(dateFiller.CalendarDayFilled); n++ {
+		/* Remove all day events first */
+		if dateFiller.CalendarDayFilled[n].AllDay {
+			//Get Day and Month of Google Calendar Event
+			theGoogleDate, err := time.Parse(LAYOUTISO, dateFiller.CalendarDayFilled[n].DateStart)
+			if err != nil {
+				fmt.Printf("Bad date error from Google Parse: %v\n", err.Error())
+			}
+			
+			
+			theMonthGoogle := convertCalendarMonth(theGoogleDate.Month().String())
+			theDayGoogle := convertCalendarDay(theGoogleDate.Day())
+
+			/* Split each code within the array, see if they have the month
+			and the same day; then remove them */
+			for l := 0; l < len(potentialDatesSlice); l++ {
+				fullStringSplit := strings.Split(potentialDatesSlice[l].IdentifierCode, "-")
+				theMonth := fullStringSplit[0]
+				theDay := fullStringSplit[1]
+
+				if (strings.ToLower(theDay) == strings.ToLower(theDayGoogle)) && 
+				(strings.ToLower(theMonth) == strings.ToLower(theMonthGoogle)){
+					//The Day and Month match, remove them from the slice
+					removePlace := l
+					copy(potentialDatesSlice[removePlace:], potentialDatesSlice[removePlace + 1:])
+					potentialDatesSlice[len(potentialDatesSlice) - 1] = Appointment{}
+					potentialDatesSlice = potentialDatesSlice[:len(potentialDatesSlice) -1]
+				}
+			}
+			
+		} else {
+			/* Remove Events within a certain day and start time */
+			theGoogleDate, err := time.Parse(time.RFC3339Nano, dateFiller.CalendarDayFilled[n].DateTimeStart)
+			if err != nil {
+				fmt.Printf("Bad date error from Google Parse: %v\n", err.Error())
+			}
+
+			theGoogleEndDate, err2 := time.Parse(time.RFC3339Nano, dateFiller.CalendarDayFilled[n].DateTimeEnd)
+			if err2 != nil {
+				fmt.Printf("Bad date error from Google Parse: %v\n", err2.Error())
+			}
+
+			theMonthGoogle := convertCalendarMonth(theGoogleDate.Month().String())
+			theDayGoogle := convertCalendarDay(theGoogleDate.Day())
+			theStartHour := convertCalendarHour(theGoogleDate.Hour())
+
+			for n := 0; n < len(potentialDatesSlice); n++ {
+				fullStringSplit := strings.Split(potentialDatesSlice[n].IdentifierCode, "-")
+				theMonth := fullStringSplit[0]
+				theDay := fullStringSplit[1]
+				theApptStartHour := fullStringSplit[2]
+				if (strings.ToLower(theDay) == strings.ToLower(theDayGoogle)) && 
+				(strings.ToLower(theMonth) == strings.ToLower(theMonthGoogle)) {
+					//Second check to make sure they fall within the same time
+					if strings.ToLower(theStartHour) == strings.ToLower(theApptStartHour){
+						/* Need to remove EACH potential Appointment that could fall between this time */
+						theStartNum := theGoogleDate.Hour()
+						theEndNum := theGoogleEndDate.Hour()
+						//fmt.Printf("DEBUG: Removing hours between %v and %v on this day: %v\n", theStartNum, theEndNum, theDay)
+						//Start with current Appointment
+						removePlace := n
+						copy(potentialDatesSlice[removePlace:], potentialDatesSlice[removePlace + 1:])
+						potentialDatesSlice[len(potentialDatesSlice) - 1] = Appointment{}
+						potentialDatesSlice = potentialDatesSlice[:len(potentialDatesSlice) -1]
+						//Loop through each hour until every end hour reached
+						for theStartNum < theEndNum {
+							removePlace := n
+							copy(potentialDatesSlice[removePlace:], potentialDatesSlice[removePlace + 1:])
+							potentialDatesSlice[len(potentialDatesSlice) - 1] = Appointment{}
+							potentialDatesSlice = potentialDatesSlice[:len(potentialDatesSlice) -1]
+							theStartNum++ //Increment the StartNum for loop
+						}
+					}
+				}
+			}
+		}
+
+	}
+	
+	/* DEBUG PRINT */
+	/*
+	for v := 0; v < len(potentialDatesSlice); v++ {
+		fmt.Printf("Here is a appointment Start Day: %v and End Day: %v\n", potentialDatesSlice[v].DateTimeStart,
+		potentialDatesSlice[v].DateTimeEnd)
+	}
+	*/
+}
+
+/* Int conversion for Month */
+func convertCalendarMonth(theMonth string) string{
 	theStringReturn := "01"
 	switch theMonth{
 	case "January": 
@@ -216,8 +367,8 @@ func convertCalendarDay(theMonth string) string{
 
 	return theStringReturn
 }
-/* Int conversion for month */
-func convertCalendaryMonth(theDay int) string{
+/* Int conversion for Day */
+func convertCalendarDay(theDay int) string{
 	returnedStringDay := "01"
 
 	switch theDay{
@@ -254,6 +405,93 @@ func convertCalendaryMonth(theDay int) string{
 	}
 
 	return returnedStringDay
+}
+
+/* Int Conversion for hour*/
+func convertCalendarHour(theHour int) string{
+	theReturnHour := "09"
+	
+	switch theHour {
+		case 0:
+			theReturnHour = "00"
+			break
+		case 1:
+			theReturnHour = "01"
+			break
+		case 2:
+			theReturnHour = "02"
+			break
+		case 3:
+			theReturnHour = "03"
+			break
+		case 4:
+			theReturnHour = "04"
+			break
+		case 5:
+			theReturnHour = "05"
+			break
+		case 6:
+			theReturnHour = "06"
+			break
+		case 7:
+			theReturnHour = "07"
+			break
+		case 8:
+			theReturnHour = "08"
+			break
+		case 9:
+			theReturnHour = "09"
+			break
+		case 10:
+			theReturnHour = "10"
+			break
+		case 11:
+			theReturnHour = "11"
+			break
+		case 12:
+			theReturnHour = "12"
+			break
+		case 13:
+			theReturnHour = "13"
+			break
+		case 14:
+			theReturnHour = "14"
+			break
+		case 15:
+			theReturnHour = "15"
+			break
+		case 16:
+			theReturnHour = "16"
+			break
+		case 17:
+			theReturnHour = "17"
+			break
+		case 18:
+			theReturnHour = "18"
+			break
+		case 19:
+			theReturnHour = "19"
+			break
+		case 20:
+			theReturnHour = "20"
+			break
+		case 21:
+			theReturnHour = "21"
+			break
+		case 22:
+			theReturnHour = "22"
+			break
+		case 23:
+			theReturnHour = "23"
+			break
+		case 24:
+			theReturnHour = "24"
+			break
+		default:
+			fmt.Printf("Something is messed up: %v\n", theHour)
+			break
+	}
+	return theReturnHour
 }
 
 /* This evaluates Dates that are available based on 16 days out

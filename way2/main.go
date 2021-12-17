@@ -9,7 +9,6 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
-	"strconv"
 	"os"
 	"path/filepath"
 	"time"
@@ -41,6 +40,10 @@ func init() {
 func index(w http.ResponseWriter, r *http.Request) {
 	//Build info to pass
 	//Rest Calendar passed dates
+	dateFiller.CalendarDayFilled = getDatesForUse()
+	fillPotentialAppointments()
+	removeCertainAppointments()
+	calendarPassing.PossibleDates = potentialDatesSlice
 	calendarPassing.CalendarAllDatesFilled.CalendarDayFilled = getDatesForUse()
 	currentTime := time.Now()
 	calendarPassing.CurrentTime = currentTime.Format("2006-01-02")
@@ -133,24 +136,8 @@ func saveToken(path string, token *oauth2.Token) {
 
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano()) //Randomly Seed
-	
-	potentialDates = make(map[string]Appointment)
-	assembledDateTime := strconv.Itoa(time.Now().Year()) + "-" + strconv.Itoa(int(time.Now().Month())) + "-" +
-	strconv.Itoa(time.Now().Day()) + "T09:00:00-06:00"
-	startTime, err := time.Parse(time.RFC3339Nano, assembledDateTime)
-	if err != nil {
-		fmt.Printf("here is our big error: %v\n", err.Error())
-	}
-	endTime := startTime.AddDate(0,0, 8 * 2)
 
-	fmt.Printf("Starttime is: %v\n EndTime is %v\n", startTime, endTime)
-
-	startTime = startTime.Add(time.Hour * 2)
-	fmt.Printf("DEBUG: End time is: %v\n", startTime)
-
-	fillPotentialAppointments()
-
-	//handleRequests() // handle requests
+	handleRequests() // handle requests
 }
 
 /* This fills our dates; called everytime the index page is meant to be loaded */

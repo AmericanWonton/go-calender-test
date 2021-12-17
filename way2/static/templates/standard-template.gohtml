@@ -29,12 +29,21 @@
 
 {{define "setDates"}}
     <script>
-        var passedAllDay = Boolean("{{.AllDay}}");
-        var passedDateStart = String("{{.DateStart}}");
-        var passedDateEnd = String("{{.DateEnd}}");
+        var passedIdentifierCode = String("{{.IdentifierCode}}");
         var passedDateTimeStart = String("{{.DateTimeStart}}");
         var passedDateTimeEnd = String("{{.DateTimeEnd}}");
-        dateSetter(passedAllDay, passedDateStart, passedDateEnd, passedDateTimeStart, passedDateTimeEnd);
+        var passedDayNumber = Number("{{.DayNumber}}");
+        var passedHourStart = String("{{.HourStart}}");
+
+        var passedHourEnd = String("{{.HourEnd}}");
+        var passedMonthNum = Number("{{.MonthNum}}");
+        var passedYearNum = Number("{{.YearNum}}");
+        var passedFullDateDisplay = String("{{.FullDateDisplay}}");
+        var passedApptTimeDisplay = String("{{.ApptTimeDisplay}}");
+        var passedApptDateDisplay = String("{{.ApptDateDisplay}}");
+        dateSetter(passedIdentifierCode, passedDateTimeStart, passedDateTimeEnd, passedDayNumber, passedHourStart,
+        passedHourEnd, passedMonthNum, passedYearNum, passedFullDateDisplay, passedApptTimeDisplay,
+        passedApptDateDisplay);
     </script>
 {{end}}
 
